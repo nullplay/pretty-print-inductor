@@ -1,0 +1,96 @@
+post_graph_lowering:
+
+region op0(arg1_1: f32[16, 2], arg0_1: f32[16, 2]) -> buf0: bf16[16, 2]:
+    for i0 in [0, 16):
+        for i1 in [0, 2):
+            tmp0: f32 = arg1_1[i0, i1]
+            tmp1: f32 = arg0_1[i0, i1]
+            tmp2: f32 = exp(tmp1)
+            tmp3: f32 = arg1_1[i0, 0]
+            tmp4: f32 = arg1_1[i0, 1]
+            tmp5: f32 = tmp3 + tmp4
+            tmp6: f32 = tmp2 * tmp5
+            tmp7: f32 = tmp0 - tmp6
+            tmp8: bf16 = bf16(tmp7)
+            buf0[i0, i1] = tmp8
+
+region op1(buf0: bf16[16, 2]) -> buf1: f32[1, 2]:
+    for i0 in [0, 1):
+        for i1 in [0, 2):
+            acc_0: f32 = 0
+            for r0 in [0, 16):
+                tmp0: bf16 = buf0[r0, i1]
+                tmp1: f32 = f32(tmp0)
+                acc_0 += tmp1
+            buf1[i0, i1] = acc_0
+
+region op2(buf1: f32[1, 2]) -> buf2: f32[2]:
+    for i0 in [0, 2):
+        tmp0: f32 = buf1[0, i0]
+        tmp1: bf16 = bf16(tmp0)
+        tmp2: f32 = f32(tmp1)
+        buf2[i0] = tmp2
+
+no_kernel(buf0: bf16[16, 2]) -> output1: bf16[2, 16]:
+    for i0 in [0, 2):
+        for i1 in [0, 16):
+            output1[i0, i1] = buf0[i1, i0]
+
+return (buf0, output1, buf2)
+
+fusion_history:
+
+fusion_pass 1 (ordinary):
+    before: op0, op1, op2
+
+    step 1: op1 + op2 -> op1_op2
+    live: op0, op1_op2
+
+region op1_op2(buf0: bf16[16, 2]) -> (buf1: f32[1, 2], buf2: f32[2]):
+    for p0 in [0, 2):
+        acc_0: f32 = 0
+        for r0 in [0, 16):
+            tmp0: bf16 = buf0[r0, p0]
+            tmp1: f32 = f32(tmp0)
+            acc_0 += tmp1
+        buf1[0, p0] = acc_0
+        tmp2: bf16 = bf16(acc_0)
+        tmp3: f32 = f32(tmp2)
+        buf2[p0] = tmp3
+
+    after: op0, op1_op2
+
+fusion_pass 2 (ordinary):
+    before: op0, op1_op2
+    no successful fusion
+
+    after: op0, op1_op2
+
+fusion_pass 3 (loop-reordering):
+    before: op0, op1_op2
+
+    step 1: op0 + op1_op2 -> op0_op1_op2
+    live: op0_op1_op2
+
+region op0_op1_op2(arg1_1: f32[16, 2], arg0_1: f32[16, 2]) -> (buf0: bf16[16, 2], buf1: f32[1, 2], buf2: f32[2]):
+    for p0 in [0, 2):
+        acc_0: f32 = 0
+        for r0 in [0, 16):
+            tmp0: f32 = arg1_1[r0, p0]
+            tmp1: f32 = arg0_1[r0, p0]
+            tmp2: f32 = exp(tmp1)
+            tmp3: f32 = arg1_1[r0, 0]
+            tmp4: f32 = arg1_1[r0, 1]
+            tmp5: f32 = tmp3 + tmp4
+            tmp6: f32 = tmp2 * tmp5
+            tmp7: f32 = tmp0 - tmp6
+            tmp8: bf16 = bf16(tmp7)
+            buf0[r0, p0] = tmp8
+            tmp9: f32 = f32(tmp8)
+            acc_0 += tmp9
+        buf1[0, p0] = acc_0
+        tmp10: bf16 = bf16(acc_0)
+        tmp11: f32 = f32(tmp10)
+        buf2[p0] = tmp11
+
+    after: op0_op1_op2

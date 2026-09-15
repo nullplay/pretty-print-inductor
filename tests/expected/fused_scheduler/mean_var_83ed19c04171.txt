@@ -1,0 +1,49 @@
+region op0_op1_op3_op5(arg1_1: bf16[16, 128, 768], arg0_1: bf16[2048, 768], arg2_1: bf16[768], arg3_1: bf16[768]) -> (buf0: bf16[16, 128, 768], buf1: f32[16, 128, 1], buf3: f32[16, 128, 1], buf5: bf16[16, 128, 768]):
+    for p0 in [0, 2048):
+        acc_0: f32 = 0
+        mean_1: f32 = 0
+        m2_1: f32 = 0
+        weight_1: f32 = 0
+        for r0 in [0, 768):
+            tmp0: bf16 = arg1_1[p0 // 128, p0 % 128, r0]
+            tmp1: bf16 = arg0_1[p0, r0]
+            tmp2: bf16 = tmp0 + tmp1
+            buf0[p0 // 128, p0 % 128, r0] = tmp2
+            tmp3: f32 = f32(tmp2)
+            acc_0 += tmp3
+            tmp4: f32 = f32(tmp2)
+            first_1: bool = r0 == 0
+            delta_1: f32 = tmp4 - mean_1
+            weight_next_1: f32 = weight_1 + 1
+            mean_next_1: f32 = select(first_1, tmp4, mean_1 + delta_1 / weight_next_1)
+            m2_next_1: f32 = select(first_1, 0, m2_1 + delta_1 * (tmp4 - mean_next_1))
+            mean_1 = mean_next_1
+            m2_1 = m2_next_1
+            weight_1 = weight_next_1
+        buf1[p0 // 128, p0 % 128, 0] = acc_0
+        buf3[p0 // 128, p0 % 128, 0] = m2_1
+        for r0 in [0, 768):
+            tmp5: bf16 = arg2_1[r0]
+            tmp6: bf16 = buf0[p0 // 128, p0 % 128, r0]
+            tmp7: f32 = 768.0
+            tmp8: f32 = acc_0 / tmp7
+            tmp9: bf16 = bf16(tmp8)
+            tmp10: bf16 = tmp6 - tmp9
+            tmp11: bf16 = tmp5 * tmp10
+            tmp12: f32 = 767.0
+            tmp13: f32 = m2_1 / tmp12
+            tmp14: f32 = sqrt(tmp13)
+            tmp15: bf16 = bf16(tmp14)
+            tmp16: bf16 = 1e-06
+            tmp17: bf16 = tmp15 + tmp16
+            tmp18: bf16 = tmp11 / tmp17
+            tmp19: bf16 = arg3_1[r0]
+            tmp20: bf16 = tmp18 + tmp19
+            buf5[p0 // 128, p0 % 128, r0] = tmp20
+
+no_kernel(buf5: bf16[16, 128, 768]) -> output1: bf16[2048, 768]:
+    for i0 in [0, 2048):
+        for i1 in [0, 768):
+            output1[i0, i1] = buf5[i0 // 128, i0 % 128, i1]
+
+return (buf0, output1)

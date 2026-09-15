@@ -1,0 +1,33 @@
+post_graph_lowering:
+
+region op0(arg0_1: i64[197, 197], arg1_1: bf16[732, 12]) -> buf0: bf16[12, 197, 197]:
+    for i0 in [0, 12):
+        for i1 in [0, 197):
+            for i2 in [0, 197):
+                tmp0: i64 = arg0_1[i1, i2]
+                indirect0: i64 = select(tmp0 < 0, tmp0 + 732, tmp0)
+                tmp1: bf16 = arg1_1[indirect0, i0]
+                buf0[i0, i1, i2] = tmp1
+
+no_kernel(buf0: bf16[12, 197, 197]) -> output0: bf16[1, 12, 197, 197]:
+    for i0 in [0, 1):
+        for i1 in [0, 12):
+            for i2 in [0, 197):
+                for i3 in [0, 197):
+                    output0[i0, i1, i2, i3] = buf0[i1, i2, i3]
+
+return (output0,)
+
+fusion_history:
+
+fusion_pass 1 (ordinary):
+    before: op0
+    no successful fusion
+
+    after: op0
+
+fusion_pass 2 (loop-reordering):
+    before: op0
+    no successful fusion
+
+    after: op0

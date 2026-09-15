@@ -1,0 +1,44 @@
+post_graph_lowering:
+
+region op0(arg0_1: bf16[8, 1024]) -> buf0: bool[8, 1024]:
+    for i0 in [0, 8):
+        for i1 in [0, 1024):
+            tmp0: bf16 = arg0_1[i0, i1]
+            tmp1: bf16 = 0.0
+            tmp2: bool = tmp0 > tmp1
+            buf0[i0, i1] = tmp2
+
+region op1(buf0: bool[8, 1024]) -> buf1: bool[]:
+    acc_0: bool = False
+    for r0 in [0, 8192):
+        tmp0: bool = buf0.buf[r0]
+        acc_0 or= tmp0
+    buf1[] = acc_0
+
+return (buf0, buf1)
+
+fusion_history:
+
+fusion_pass 1 (ordinary):
+    before: op0, op1
+    no successful fusion
+
+    after: op0, op1
+
+fusion_pass 2 (loop-reordering):
+    before: op0, op1
+
+    step 1: op0 + op1 -> op0_op1
+    live: op0_op1
+
+region op0_op1(arg0_1: bf16[8, 1024]) -> (buf0: bool[8, 1024], buf1: bool[]):
+    acc_0: bool = False
+    for r0 in [0, 8192):
+        tmp0: bf16 = arg0_1[r0 // 1024, r0 % 1024]
+        tmp1: bf16 = 0.0
+        tmp2: bool = tmp0 > tmp1
+        buf0[r0 // 1024, r0 % 1024] = tmp2
+        acc_0 or= tmp2
+    buf1[] = acc_0
+
+    after: op0_op1

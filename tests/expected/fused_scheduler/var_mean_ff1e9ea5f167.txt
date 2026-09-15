@@ -1,0 +1,52 @@
+region op0_op1_op3_op4(arg0_1: bf16[128, 512, 1, 1], arg1_1: f32[512], arg2_1: f32[512]) -> (buf0: f32[128, 32, 1, 1], buf1: f32[128, 32, 1, 1], buf3: f32[128, 32, 1, 1], buf4: bf16[128, 512, 1, 1]):
+    for p0 in [0, 4096):
+        mean_0: f32 = 0
+        m2_0: f32 = 0
+        weight_0: f32 = 0
+        mean_1: f32 = 0
+        m2_1: f32 = 0
+        weight_1: f32 = 0
+        for r0 in [0, 16):
+            tmp0: bf16 = arg0_1[p0 // 32, (r0 + 16*p0) % 512, 0, 0]
+            tmp1: f32 = f32(tmp0)
+            first_0: bool = r0 == 0
+            delta_0: f32 = tmp1 - mean_0
+            weight_next_0: f32 = weight_0 + 1
+            mean_next_0: f32 = select(first_0, tmp1, mean_0 + delta_0 / weight_next_0)
+            m2_next_0: f32 = select(first_0, 0, m2_0 + delta_0 * (tmp1 - mean_next_0))
+            mean_0 = mean_next_0
+            m2_0 = m2_next_0
+            weight_0 = weight_next_0
+            tmp2: bf16 = arg0_1[p0 // 32, (r0 + 16*p0) % 512, 0, 0]
+            tmp3: f32 = f32(tmp2)
+            first_1: bool = r0 == 0
+            delta_1: f32 = tmp3 - mean_1
+            weight_next_1: f32 = weight_1 + 1
+            mean_next_1: f32 = select(first_1, tmp3, mean_1 + delta_1 / weight_next_1)
+            m2_next_1: f32 = select(first_1, 0, m2_1 + delta_1 * (tmp3 - mean_next_1))
+            mean_1 = mean_next_1
+            m2_1 = m2_next_1
+            weight_1 = weight_next_1
+        buf0[p0 // 32, p0 % 32, 0, 0] = mean_0
+        buf1[p0 // 32, p0 % 32, 0, 0] = m2_1
+        tmp4: f32 = 16.0
+        tmp5: f32 = m2_1 / tmp4
+        tmp6: f32 = 1e-05
+        tmp7: f32 = tmp5 + tmp6
+        tmp8: f32 = rsqrt(tmp7)
+        buf3[p0 // 32, p0 % 32, 0, 0] = tmp8
+        for r0 in [0, 16):
+            tmp9: bf16 = arg0_1[p0 // 32, (r0 + 16*p0) % 512, 0, 0]
+            tmp10: f32 = f32(tmp9)
+            tmp11: f32 = tmp10 - mean_0
+            tmp12: f32 = buf3[p0 // 32, p0 % 32, 0, 0]
+            tmp13: f32 = tmp11 * tmp12
+            tmp14: f32 = arg1_1[(r0 + 16*p0) % 512]
+            tmp15: f32 = tmp13 * tmp14
+            tmp16: f32 = arg2_1[(r0 + 16*p0) % 512]
+            tmp17: f32 = tmp15 + tmp16
+            tmp18: f32 = relu(tmp17)
+            tmp19: bf16 = bf16(tmp18)
+            buf4[p0 // 32, (r0 + 16*p0) % 512, 0, 0] = tmp19
+
+return (buf0, buf3, buf4)

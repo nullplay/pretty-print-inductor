@@ -1,0 +1,52 @@
+region op0_op1_op2_op3(arg0_1: bf16[16, 128, 128], arg1_1: f32[1, 1, 128, 128]) -> (buf0: f32[1, 16, 128, 1], buf1: f32[1, 16, 128, 1], buf2: f32[1, 16, 128, 128], buf3: bf16[1, 16, 128, 128]):
+    for p0 in [0, 16):
+        for p1 in [0, 128):
+            acc_0: f32 = -inf
+            for r0 in [0, 128):
+                tmp0: bf16 = arg0_1[p0, p1, r0]
+                tmp1: bf16 = 0.0625
+                tmp2: bf16 = tmp0 * tmp1
+                tmp3: f32 = f32(tmp2)
+                tmp4: f32 = arg1_1[0, 0, p1, r0]
+                tmp5: f32 = tmp3 + tmp4
+                acc_0 max= tmp5
+            buf0[0, p0, p1, 0] = acc_0
+            acc_1: f32 = 0
+            for r0 in [0, 128):
+                tmp6: bf16 = arg0_1[p0, p1, r0]
+                tmp7: bf16 = 0.0625
+                tmp8: bf16 = tmp6 * tmp7
+                tmp9: f32 = f32(tmp8)
+                tmp10: f32 = arg1_1[0, 0, p1, r0]
+                tmp11: f32 = tmp9 + tmp10
+                tmp12: f32 = tmp11 - acc_0
+                tmp13: f32 = exp(tmp12)
+                acc_1 += tmp13
+            buf1[0, p0, p1, 0] = acc_1
+            for r0 in [0, 128):
+                tmp14: bf16 = arg0_1[p0, p1, r0]
+                tmp15: bf16 = 0.0625
+                tmp16: bf16 = tmp14 * tmp15
+                tmp17: f32 = f32(tmp16)
+                tmp18: f32 = arg1_1[0, 0, p1, r0]
+                tmp19: f32 = tmp17 + tmp18
+                tmp20: f32 = tmp19 - acc_0
+                tmp21: f32 = exp(tmp20)
+                tmp22: f32 = tmp21 / acc_1
+                buf2[0, p0, p1, r0] = tmp22
+                tmp23: bf16 = bf16(tmp22)
+                buf3[0, p0, p1, r0] = tmp23
+
+no_kernel(buf3: bf16[1, 16, 128, 128]) -> output1: bf16[16, 128, 128]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 128):
+                output1[i0, i1, i2] = buf3[0, i0, i1, i2]
+
+no_kernel(buf3: bf16[1, 16, 128, 128]) -> output2: bf16[16, 128, 128]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 128):
+                output2[i0, i1, i2] = buf3[0, i0, i2, i1]
+
+return (buf2, output1, output2)

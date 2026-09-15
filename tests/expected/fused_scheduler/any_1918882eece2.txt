@@ -1,0 +1,11 @@
+region op0_op1(arg0_1: bf16[8, 1024]) -> (buf0: bool[8, 1024], buf1: bool[]):
+    acc_0: bool = False
+    for r0 in [0, 8192):
+        tmp0: bf16 = arg0_1[r0 // 1024, r0 % 1024]
+        tmp1: bf16 = 0.0
+        tmp2: bool = tmp0 > tmp1
+        buf0[r0 // 1024, r0 % 1024] = tmp2
+        acc_0 or= tmp2
+    buf1[] = acc_0
+
+return (buf0, buf1)

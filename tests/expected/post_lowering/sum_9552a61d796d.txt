@@ -1,0 +1,18 @@
+region op0(arg0_1: bf16[128, 1]) -> buf0: f32[1, 1]:
+    for i0 in [0, 1):
+        for i1 in [0, 1):
+            acc_0: f32 = 0
+            for r0 in [0, 128):
+                tmp0: bf16 = arg0_1[r0, 0]
+                tmp1: f32 = f32(tmp0)
+                acc_0 += tmp1
+            buf0[i0, i1] = acc_0
+
+region op1(buf0: f32[1, 1]) -> buf1: f32[1]:
+    for i0 in [0, 1):
+        tmp0: f32 = buf0[0, 0]
+        tmp1: bf16 = bf16(tmp0)
+        tmp2: f32 = f32(tmp1)
+        buf1[i0] = tmp2
+
+return (buf1,)

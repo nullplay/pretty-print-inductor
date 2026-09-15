@@ -1,0 +1,248 @@
+post_graph_lowering:
+
+region op0(arg1_1: bf16[16, 128, 768], arg0_1: bf16[2048, 768]) -> buf0: bf16[16, 128, 768]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 768):
+                tmp0: bf16 = arg1_1[i0, i1, i2]
+                tmp1: bf16 = arg0_1[i1 + 128*i0, i2]
+                tmp2: bf16 = tmp0 + tmp1
+                buf0[i0, i1, i2] = tmp2
+
+region op1(buf0: bf16[16, 128, 768]) -> buf1: f32[16, 128, 1]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 1):
+                acc_0: f32 = 0
+                for r0 in [0, 768):
+                    tmp0: bf16 = buf0[i0, i1, r0]
+                    tmp1: f32 = f32(tmp0)
+                    acc_0 += tmp1
+                buf1[i0, i1, i2] = acc_0
+
+region op2(buf0: bf16[16, 128, 768]) -> buf2: f32[16, 128, 1]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 1):
+                mean_0: f32 = 0
+                m2_0: f32 = 0
+                weight_0: f32 = 0
+                for r0 in [0, 768):
+                    tmp0: bf16 = buf0[i0, i1, r0]
+                    tmp1: f32 = f32(tmp0)
+                    first_0: bool = r0 == 0
+                    delta_0: f32 = tmp1 - mean_0
+                    weight_next_0: f32 = weight_0 + 1
+                    mean_next_0: f32 = select(first_0, tmp1, mean_0 + delta_0 / weight_next_0)
+                    m2_next_0: f32 = select(first_0, 0, m2_0 + delta_0 * (tmp1 - mean_next_0))
+                    mean_0 = mean_next_0
+                    m2_0 = m2_next_0
+                    weight_0 = weight_next_0
+                buf2[i0, i1, i2] = mean_0
+
+region op3(buf0: bf16[16, 128, 768]) -> buf3: f32[16, 128, 1]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 1):
+                mean_0: f32 = 0
+                m2_0: f32 = 0
+                weight_0: f32 = 0
+                for r0 in [0, 768):
+                    tmp0: bf16 = buf0[i0, i1, r0]
+                    tmp1: f32 = f32(tmp0)
+                    first_0: bool = r0 == 0
+                    delta_0: f32 = tmp1 - mean_0
+                    weight_next_0: f32 = weight_0 + 1
+                    mean_next_0: f32 = select(first_0, tmp1, mean_0 + delta_0 / weight_next_0)
+                    m2_next_0: f32 = select(first_0, 0, m2_0 + delta_0 * (tmp1 - mean_next_0))
+                    mean_0 = mean_next_0
+                    m2_0 = m2_next_0
+                    weight_0 = weight_next_0
+                buf3[i0, i1, i2] = m2_0
+
+region op4(buf0: bf16[16, 128, 768]) -> buf4: f32[16, 128, 1]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 1):
+                mean_0: f32 = 0
+                m2_0: f32 = 0
+                weight_0: f32 = 0
+                for r0 in [0, 768):
+                    tmp0: bf16 = buf0[i0, i1, r0]
+                    tmp1: f32 = f32(tmp0)
+                    first_0: bool = r0 == 0
+                    delta_0: f32 = tmp1 - mean_0
+                    weight_next_0: f32 = weight_0 + 1
+                    mean_next_0: f32 = select(first_0, tmp1, mean_0 + delta_0 / weight_next_0)
+                    m2_next_0: f32 = select(first_0, 0, m2_0 + delta_0 * (tmp1 - mean_next_0))
+                    mean_0 = mean_next_0
+                    m2_0 = m2_next_0
+                    weight_0 = weight_next_0
+                buf4[i0, i1, i2] = weight_0
+
+region op5(arg2_1: bf16[768], buf0: bf16[16, 128, 768], buf1: f32[16, 128, 1], buf3: f32[16, 128, 1], arg3_1: bf16[768]) -> buf5: bf16[16, 128, 768]:
+    for i0 in [0, 16):
+        for i1 in [0, 128):
+            for i2 in [0, 768):
+                tmp0: bf16 = arg2_1[i2]
+                tmp1: bf16 = buf0[i0, i1, i2]
+                tmp2: f32 = buf1[i0, i1, 0]
+                tmp3: f32 = 768
+                tmp4: f32 = tmp2 / tmp3
+                tmp5: bf16 = bf16(tmp4)
+                tmp6: bf16 = tmp1 - tmp5
+                tmp7: bf16 = tmp0 * tmp6
+                tmp8: f32 = buf3[i0, i1, 0]
+                tmp9: f32 = 1.0
+                tmp10: f32 = 768
+                tmp11: f32 = 0
+                tmp12: f32 = tmp10 - tmp9
+                tmp13: f32 = max(tmp11, tmp12)
+                tmp14: f32 = tmp8 / tmp13
+                tmp15: f32 = sqrt(tmp14)
+                tmp16: bf16 = bf16(tmp15)
+                tmp17: bf16 = 1e-06
+                tmp18: bf16 = tmp16 + tmp17
+                tmp19: bf16 = tmp7 / tmp18
+                tmp20: bf16 = arg3_1[i2]
+                tmp21: bf16 = tmp19 + tmp20
+                buf5[i0, i1, i2] = tmp21
+
+no_kernel(buf5: bf16[16, 128, 768]) -> output1: bf16[2048, 768]:
+    for i0 in [0, 2048):
+        for i1 in [0, 768):
+            output1[i0, i1] = buf5[i0 // 128, i0 % 128, i1]
+
+return (buf0, output1)
+
+fusion_history:
+
+fusion_pass 1 (ordinary):
+    before: op0, op1, op3, op5
+
+    step 1: op1 + op3 -> op1_op3
+    live: op0, op1_op3, op5
+
+region op1_op3(buf0: bf16[16, 128, 768]) -> (buf1: f32[16, 128, 1], buf3: f32[16, 128, 1]):
+    for p0 in [0, 16):
+        for p1 in [0, 128):
+            acc_0: f32 = 0
+            mean_1: f32 = 0
+            m2_1: f32 = 0
+            weight_1: f32 = 0
+            for r0 in [0, 768):
+                tmp0: bf16 = buf0[p0, p1, r0]
+                tmp1: f32 = f32(tmp0)
+                acc_0 += tmp1
+                tmp2: bf16 = buf0[p0, p1, r0]
+                tmp3: f32 = f32(tmp2)
+                first_1: bool = r0 == 0
+                delta_1: f32 = tmp3 - mean_1
+                weight_next_1: f32 = weight_1 + 1
+                mean_next_1: f32 = select(first_1, tmp3, mean_1 + delta_1 / weight_next_1)
+                m2_next_1: f32 = select(first_1, 0, m2_1 + delta_1 * (tmp3 - mean_next_1))
+                mean_1 = mean_next_1
+                m2_1 = m2_next_1
+                weight_1 = weight_next_1
+            buf1[p0, p1, 0] = acc_0
+            buf3[p0, p1, 0] = m2_1
+
+    step 2: op1_op3 + op5 -> op1_op3_op5
+    live: op0, op1_op3_op5
+
+region op1_op3_op5(buf0: bf16[16, 128, 768], arg2_1: bf16[768], arg3_1: bf16[768]) -> (buf1: f32[16, 128, 1], buf3: f32[16, 128, 1], buf5: bf16[16, 128, 768]):
+    for p0 in [0, 16):
+        for p1 in [0, 128):
+            acc_0: f32 = 0
+            mean_1: f32 = 0
+            m2_1: f32 = 0
+            weight_1: f32 = 0
+            for r0 in [0, 768):
+                tmp0: bf16 = buf0[p0, p1, r0]
+                tmp1: f32 = f32(tmp0)
+                acc_0 += tmp1
+                tmp2: bf16 = buf0[p0, p1, r0]
+                tmp3: f32 = f32(tmp2)
+                first_1: bool = r0 == 0
+                delta_1: f32 = tmp3 - mean_1
+                weight_next_1: f32 = weight_1 + 1
+                mean_next_1: f32 = select(first_1, tmp3, mean_1 + delta_1 / weight_next_1)
+                m2_next_1: f32 = select(first_1, 0, m2_1 + delta_1 * (tmp3 - mean_next_1))
+                mean_1 = mean_next_1
+                m2_1 = m2_next_1
+                weight_1 = weight_next_1
+            buf1[p0, p1, 0] = acc_0
+            buf3[p0, p1, 0] = m2_1
+            for r0 in [0, 768):
+                tmp4: bf16 = arg2_1[r0]
+                tmp5: bf16 = buf0[p0, p1, r0]
+                tmp6: f32 = 768.0
+                tmp7: f32 = acc_0 / tmp6
+                tmp8: bf16 = bf16(tmp7)
+                tmp9: bf16 = tmp5 - tmp8
+                tmp10: bf16 = tmp4 * tmp9
+                tmp11: f32 = 767.0
+                tmp12: f32 = m2_1 / tmp11
+                tmp13: f32 = sqrt(tmp12)
+                tmp14: bf16 = bf16(tmp13)
+                tmp15: bf16 = 1e-06
+                tmp16: bf16 = tmp14 + tmp15
+                tmp17: bf16 = tmp10 / tmp16
+                tmp18: bf16 = arg3_1[r0]
+                tmp19: bf16 = tmp17 + tmp18
+                buf5[p0, p1, r0] = tmp19
+
+    step 3: op0 + op1_op3_op5 -> op0_op1_op3_op5
+    live: op0_op1_op3_op5
+
+region op0_op1_op3_op5(arg1_1: bf16[16, 128, 768], arg0_1: bf16[2048, 768], arg2_1: bf16[768], arg3_1: bf16[768]) -> (buf0: bf16[16, 128, 768], buf1: f32[16, 128, 1], buf3: f32[16, 128, 1], buf5: bf16[16, 128, 768]):
+    for p0 in [0, 16):
+        for p1 in [0, 128):
+            acc_0: f32 = 0
+            mean_1: f32 = 0
+            m2_1: f32 = 0
+            weight_1: f32 = 0
+            for r0 in [0, 768):
+                tmp0: bf16 = arg1_1[p0, p1, r0]
+                tmp1: bf16 = arg0_1[p1 + 128*p0, r0]
+                tmp2: bf16 = tmp0 + tmp1
+                buf0[p0, p1, r0] = tmp2
+                tmp3: f32 = f32(tmp2)
+                acc_0 += tmp3
+                tmp4: f32 = f32(tmp2)
+                first_1: bool = r0 == 0
+                delta_1: f32 = tmp4 - mean_1
+                weight_next_1: f32 = weight_1 + 1
+                mean_next_1: f32 = select(first_1, tmp4, mean_1 + delta_1 / weight_next_1)
+                m2_next_1: f32 = select(first_1, 0, m2_1 + delta_1 * (tmp4 - mean_next_1))
+                mean_1 = mean_next_1
+                m2_1 = m2_next_1
+                weight_1 = weight_next_1
+            buf1[p0, p1, 0] = acc_0
+            buf3[p0, p1, 0] = m2_1
+            for r0 in [0, 768):
+                tmp5: bf16 = arg2_1[r0]
+                tmp6: bf16 = buf0[p0, p1, r0]
+                tmp7: f32 = 768.0
+                tmp8: f32 = acc_0 / tmp7
+                tmp9: bf16 = bf16(tmp8)
+                tmp10: bf16 = tmp6 - tmp9
+                tmp11: bf16 = tmp5 * tmp10
+                tmp12: f32 = 767.0
+                tmp13: f32 = m2_1 / tmp12
+                tmp14: f32 = sqrt(tmp13)
+                tmp15: bf16 = bf16(tmp14)
+                tmp16: bf16 = 1e-06
+                tmp17: bf16 = tmp15 + tmp16
+                tmp18: bf16 = tmp11 / tmp17
+                tmp19: bf16 = arg3_1[r0]
+                tmp20: bf16 = tmp18 + tmp19
+                buf5[p0, p1, r0] = tmp20
+
+    after: op0_op1_op3_op5
+
+fusion_pass 2 (loop-reordering):
+    before: op0_op1_op3_op5
+    no successful fusion
+
+    after: op0_op1_op3_op5

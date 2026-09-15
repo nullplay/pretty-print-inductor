@@ -1,0 +1,27 @@
+region op0_op1_op2(arg1_1: f32[16, 2], arg0_1: f32[16, 2]) -> (buf0: bf16[16, 2], buf1: f32[1, 2], buf2: f32[2]):
+    for p0 in [0, 2):
+        acc_0: f32 = 0
+        for r0 in [0, 16):
+            tmp0: f32 = arg1_1[r0, p0]
+            tmp1: f32 = arg0_1[r0, p0]
+            tmp2: f32 = exp(tmp1)
+            tmp3: f32 = arg1_1[r0, 0]
+            tmp4: f32 = arg1_1[r0, 1]
+            tmp5: f32 = tmp3 + tmp4
+            tmp6: f32 = tmp2 * tmp5
+            tmp7: f32 = tmp0 - tmp6
+            tmp8: bf16 = bf16(tmp7)
+            buf0[r0, p0] = tmp8
+            tmp9: f32 = f32(tmp8)
+            acc_0 += tmp9
+        buf1[0, p0] = acc_0
+        tmp10: bf16 = bf16(acc_0)
+        tmp11: f32 = f32(tmp10)
+        buf2[p0] = tmp11
+
+no_kernel(buf0: bf16[16, 2]) -> output1: bf16[2, 16]:
+    for i0 in [0, 2):
+        for i1 in [0, 16):
+            output1[i0, i1] = buf0[i1, i0]
+
+return (buf0, output1, buf2)

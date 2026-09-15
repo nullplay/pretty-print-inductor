@@ -1,0 +1,350 @@
+post_graph_lowering:
+
+region op0(arg0_1: bf16[128, 2]) -> buf0: bf16[1, 128]:
+    for i0 in [0, 1):
+        for i1 in [0, 128):
+            tmp0: bf16 = arg0_1[i1, 0]
+            buf0[i0, i1] = tmp0
+
+region op1(buf0: bf16[1, 128]) -> buf1: f32[1, 1]:
+    for i0 in [0, 1):
+        for i1 in [0, 1):
+            acc_0: f32 = -inf
+            for r0 in [0, 128):
+                tmp0: bf16 = buf0[0, r0]
+                tmp1: f32 = f32(tmp0)
+                acc_0 max= tmp1
+            buf1[i0, i1] = acc_0
+
+region op2(buf0: bf16[1, 128], buf1: f32[1, 1]) -> buf2: f32[1, 1]:
+    for i0 in [0, 1):
+        for i1 in [0, 1):
+            acc_0: f32 = 0
+            for r0 in [0, 128):
+                tmp0: bf16 = buf0[0, r0]
+                tmp1: f32 = f32(tmp0)
+                tmp2: f32 = buf1[0, 0]
+                tmp3: f32 = tmp1 - tmp2
+                tmp4: f32 = exp(tmp3)
+                acc_0 += tmp4
+            buf2[i0, i1] = acc_0
+
+region op3(arg0_1: bf16[128, 2]) -> buf3: bf16[1, 128]:
+    for i0 in [0, 1):
+        for i1 in [0, 128):
+            tmp0: bf16 = arg0_1[i1, 1]
+            buf3[i0, i1] = tmp0
+
+region op4(buf3: bf16[1, 128]) -> buf4: f32[1, 1]:
+    for i0 in [0, 1):
+        for i1 in [0, 1):
+            acc_0: f32 = -inf
+            for r0 in [0, 128):
+                tmp0: bf16 = buf3[0, r0]
+                tmp1: f32 = f32(tmp0)
+                acc_0 max= tmp1
+            buf4[i0, i1] = acc_0
+
+region op5(buf3: bf16[1, 128], buf4: f32[1, 1]) -> buf5: f32[1, 1]:
+    for i0 in [0, 1):
+        for i1 in [0, 1):
+            acc_0: f32 = 0
+            for r0 in [0, 128):
+                tmp0: bf16 = buf3[0, r0]
+                tmp1: f32 = f32(tmp0)
+                tmp2: f32 = buf4[0, 0]
+                tmp3: f32 = tmp1 - tmp2
+                tmp4: f32 = exp(tmp3)
+                acc_0 += tmp4
+            buf5[i0, i1] = acc_0
+
+region op6(arg1_1: i64[1], buf0: bf16[1, 128], buf1: f32[1, 1], buf2: f32[1, 1], arg2_1: i64[1], buf3: bf16[1, 128], buf4: f32[1, 1], buf5: f32[1, 1]) -> buf6: bf16[]:
+    tmp0: i64 = arg1_1[0]
+    tmp1: i64 = 0
+    tmp2: i64 = max(tmp0, tmp1)
+    tmp3: i64 = 128
+    tmp4: i64 = min(tmp2, tmp3)
+    tmp5: i64 = 128
+    tmp6: bool = tmp4 != tmp5
+    tmp7: i64 = arg1_1[0]
+    tmp8: i64 = 0
+    tmp9: i64 = max(tmp7, tmp8)
+    tmp10: i64 = 128
+    tmp11: i64 = min(tmp9, tmp10)
+    tmp12: i64 = 128
+    tmp13: bool = tmp11 != tmp12
+    tmp14: i64 = arg1_1[0]
+    tmp15: i64 = 0
+    tmp16: i64 = max(tmp14, tmp15)
+    tmp17: i64 = 128
+    tmp18: i64 = min(tmp16, tmp17)
+    tmp19: i64 = 0
+    tmp20: i64 = select(tmp13, tmp18, tmp19)
+    indirect0: i64 = tmp20
+    tmp21: bf16 = buf0[0, indirect0]
+    tmp22: f32 = f32(tmp21)
+    tmp23: f32 = buf1[0, 0]
+    tmp24: f32 = tmp22 - tmp23
+    tmp25: f32 = buf2[0, 0]
+    tmp26: f32 = log(tmp25)
+    tmp27: f32 = tmp24 - tmp26
+    tmp28: bf16 = bf16(tmp27)
+    tmp29: bf16 = -tmp28
+    tmp30: bf16 = 0.0
+    tmp31: bf16 = select(tmp6, tmp29, tmp30)
+    tmp32: i64 = arg1_1[0]
+    tmp33: i64 = 0
+    tmp34: i64 = max(tmp32, tmp33)
+    tmp35: i64 = 128
+    tmp36: i64 = min(tmp34, tmp35)
+    tmp37: i64 = 128
+    tmp38: bool = tmp36 != tmp37
+    tmp39: i64 = i64(tmp38)
+    tmp40: bf16 = bf16(tmp39)
+    tmp41: bf16 = tmp31 / tmp40
+    tmp42: i64 = arg2_1[0]
+    tmp43: i64 = 0
+    tmp44: i64 = max(tmp42, tmp43)
+    tmp45: i64 = 128
+    tmp46: i64 = min(tmp44, tmp45)
+    tmp47: i64 = 128
+    tmp48: bool = tmp46 != tmp47
+    tmp49: i64 = arg2_1[0]
+    tmp50: i64 = 0
+    tmp51: i64 = max(tmp49, tmp50)
+    tmp52: i64 = 128
+    tmp53: i64 = min(tmp51, tmp52)
+    tmp54: i64 = 128
+    tmp55: bool = tmp53 != tmp54
+    tmp56: i64 = arg2_1[0]
+    tmp57: i64 = 0
+    tmp58: i64 = max(tmp56, tmp57)
+    tmp59: i64 = 128
+    tmp60: i64 = min(tmp58, tmp59)
+    tmp61: i64 = 0
+    tmp62: i64 = select(tmp55, tmp60, tmp61)
+    indirect1: i64 = tmp62
+    tmp63: bf16 = buf3[0, indirect1]
+    tmp64: f32 = f32(tmp63)
+    tmp65: f32 = buf4[0, 0]
+    tmp66: f32 = tmp64 - tmp65
+    tmp67: f32 = buf5[0, 0]
+    tmp68: f32 = log(tmp67)
+    tmp69: f32 = tmp66 - tmp68
+    tmp70: bf16 = bf16(tmp69)
+    tmp71: bf16 = -tmp70
+    tmp72: bf16 = 0.0
+    tmp73: bf16 = select(tmp48, tmp71, tmp72)
+    tmp74: i64 = arg2_1[0]
+    tmp75: i64 = 0
+    tmp76: i64 = max(tmp74, tmp75)
+    tmp77: i64 = 128
+    tmp78: i64 = min(tmp76, tmp77)
+    tmp79: i64 = 128
+    tmp80: bool = tmp78 != tmp79
+    tmp81: i64 = i64(tmp80)
+    tmp82: bf16 = bf16(tmp81)
+    tmp83: bf16 = tmp73 / tmp82
+    tmp84: bf16 = tmp41 + tmp83
+    buf6[] = tmp84
+
+region op7(buf6: bf16[]) -> buf7: bf16[]:
+    tmp0: bf16 = buf6[]
+    tmp1: bf16 = 0.5
+    tmp2: bf16 = tmp0 * tmp1
+    buf7[] = tmp2
+
+return (buf0, buf3, buf7)
+
+fusion_history:
+
+fusion_pass 1 (ordinary):
+    before: op0, op1, op2, op3, op4, op5, op6, op7
+
+    step 1: op1 + op2 -> op1_op2
+    live: op0, op1_op2, op3, op4, op5, op6, op7
+
+region op1_op2(buf0: bf16[1, 128]) -> (buf1: f32[1, 1], buf2: f32[1, 1]):
+    acc_0: f32 = -inf
+    for r0 in [0, 128):
+        tmp0: bf16 = buf0[0, r0]
+        tmp1: f32 = f32(tmp0)
+        acc_0 max= tmp1
+    buf1[0, 0] = acc_0
+    acc_1: f32 = 0
+    for r0 in [0, 128):
+        tmp2: bf16 = buf0[0, r0]
+        tmp3: f32 = f32(tmp2)
+        tmp4: f32 = tmp3 - acc_0
+        tmp5: f32 = exp(tmp4)
+        acc_1 += tmp5
+    buf2[0, 0] = acc_1
+
+    step 2: op4 + op5 -> op4_op5
+    live: op0, op1_op2, op3, op4_op5, op6, op7
+
+region op4_op5(buf3: bf16[1, 128]) -> (buf4: f32[1, 1], buf5: f32[1, 1]):
+    acc_0: f32 = -inf
+    for r0 in [0, 128):
+        tmp0: bf16 = buf3[0, r0]
+        tmp1: f32 = f32(tmp0)
+        acc_0 max= tmp1
+    buf4[0, 0] = acc_0
+    acc_1: f32 = 0
+    for r0 in [0, 128):
+        tmp2: bf16 = buf3[0, r0]
+        tmp3: f32 = f32(tmp2)
+        tmp4: f32 = tmp3 - acc_0
+        tmp5: f32 = exp(tmp4)
+        acc_1 += tmp5
+    buf5[0, 0] = acc_1
+
+    step 3: op0 + op1_op2 -> op0_op1_op2
+    live: op0_op1_op2, op3, op4_op5, op6, op7
+
+region op0_op1_op2(arg0_1: bf16[128, 2]) -> (buf0: bf16[1, 128], buf1: f32[1, 1], buf2: f32[1, 1]):
+    acc_0: f32 = -inf
+    for r0 in [0, 128):
+        tmp0: bf16 = arg0_1[r0, 0]
+        buf0[0, r0] = tmp0
+        tmp1: f32 = f32(tmp0)
+        acc_0 max= tmp1
+    buf1[0, 0] = acc_0
+    acc_1: f32 = 0
+    for r0 in [0, 128):
+        tmp2: bf16 = buf0[0, r0]
+        tmp3: f32 = f32(tmp2)
+        tmp4: f32 = tmp3 - acc_0
+        tmp5: f32 = exp(tmp4)
+        acc_1 += tmp5
+    buf2[0, 0] = acc_1
+
+    step 4: op3 + op4_op5 -> op3_op4_op5
+    live: op0_op1_op2, op3_op4_op5, op6, op7
+
+region op3_op4_op5(arg0_1: bf16[128, 2]) -> (buf3: bf16[1, 128], buf4: f32[1, 1], buf5: f32[1, 1]):
+    acc_0: f32 = -inf
+    for r0 in [0, 128):
+        tmp0: bf16 = arg0_1[r0, 1]
+        buf3[0, r0] = tmp0
+        tmp1: f32 = f32(tmp0)
+        acc_0 max= tmp1
+    buf4[0, 0] = acc_0
+    acc_1: f32 = 0
+    for r0 in [0, 128):
+        tmp2: bf16 = buf3[0, r0]
+        tmp3: f32 = f32(tmp2)
+        tmp4: f32 = tmp3 - acc_0
+        tmp5: f32 = exp(tmp4)
+        acc_1 += tmp5
+    buf5[0, 0] = acc_1
+
+    step 5: op6 + op7 -> op6_op7
+    live: op0_op1_op2, op3_op4_op5, op6_op7
+
+region op6_op7(arg1_1: i64[1], buf0: bf16[1, 128], buf1: f32[1, 1], buf2: f32[1, 1], arg2_1: i64[1], buf3: bf16[1, 128], buf4: f32[1, 1], buf5: f32[1, 1]) -> (buf6: bf16[], buf7: bf16[]):
+    tmp0: i64 = arg1_1[0]
+    tmp1: i64 = 0
+    tmp2: i64 = max(tmp0, tmp1)
+    tmp3: i64 = 128
+    tmp4: i64 = min(tmp2, tmp3)
+    tmp5: i64 = 128
+    tmp6: bool = tmp4 != tmp5
+    tmp7: i64 = arg1_1[0]
+    tmp8: i64 = 0
+    tmp9: i64 = max(tmp7, tmp8)
+    tmp10: i64 = 128
+    tmp11: i64 = min(tmp9, tmp10)
+    tmp12: i64 = 128
+    tmp13: bool = tmp11 != tmp12
+    tmp14: i64 = arg1_1[0]
+    tmp15: i64 = 0
+    tmp16: i64 = max(tmp14, tmp15)
+    tmp17: i64 = 128
+    tmp18: i64 = min(tmp16, tmp17)
+    tmp19: i64 = 0
+    tmp20: i64 = select(tmp13, tmp18, tmp19)
+    indirect0: i64 = tmp20
+    tmp21: bf16 = buf0[0, indirect0]
+    tmp22: f32 = f32(tmp21)
+    tmp23: f32 = buf1[0, 0]
+    tmp24: f32 = tmp22 - tmp23
+    tmp25: f32 = buf2[0, 0]
+    tmp26: f32 = log(tmp25)
+    tmp27: f32 = tmp24 - tmp26
+    tmp28: bf16 = bf16(tmp27)
+    tmp29: bf16 = -tmp28
+    tmp30: bf16 = 0.0
+    tmp31: bf16 = select(tmp6, tmp29, tmp30)
+    tmp32: i64 = arg1_1[0]
+    tmp33: i64 = 0
+    tmp34: i64 = max(tmp32, tmp33)
+    tmp35: i64 = 128
+    tmp36: i64 = min(tmp34, tmp35)
+    tmp37: i64 = 128
+    tmp38: bool = tmp36 != tmp37
+    tmp39: i64 = i64(tmp38)
+    tmp40: bf16 = bf16(tmp39)
+    tmp41: bf16 = tmp31 / tmp40
+    tmp42: i64 = arg2_1[0]
+    tmp43: i64 = 0
+    tmp44: i64 = max(tmp42, tmp43)
+    tmp45: i64 = 128
+    tmp46: i64 = min(tmp44, tmp45)
+    tmp47: i64 = 128
+    tmp48: bool = tmp46 != tmp47
+    tmp49: i64 = arg2_1[0]
+    tmp50: i64 = 0
+    tmp51: i64 = max(tmp49, tmp50)
+    tmp52: i64 = 128
+    tmp53: i64 = min(tmp51, tmp52)
+    tmp54: i64 = 128
+    tmp55: bool = tmp53 != tmp54
+    tmp56: i64 = arg2_1[0]
+    tmp57: i64 = 0
+    tmp58: i64 = max(tmp56, tmp57)
+    tmp59: i64 = 128
+    tmp60: i64 = min(tmp58, tmp59)
+    tmp61: i64 = 0
+    tmp62: i64 = select(tmp55, tmp60, tmp61)
+    indirect1: i64 = tmp62
+    tmp63: bf16 = buf3[0, indirect1]
+    tmp64: f32 = f32(tmp63)
+    tmp65: f32 = buf4[0, 0]
+    tmp66: f32 = tmp64 - tmp65
+    tmp67: f32 = buf5[0, 0]
+    tmp68: f32 = log(tmp67)
+    tmp69: f32 = tmp66 - tmp68
+    tmp70: bf16 = bf16(tmp69)
+    tmp71: bf16 = -tmp70
+    tmp72: bf16 = 0.0
+    tmp73: bf16 = select(tmp48, tmp71, tmp72)
+    tmp74: i64 = arg2_1[0]
+    tmp75: i64 = 0
+    tmp76: i64 = max(tmp74, tmp75)
+    tmp77: i64 = 128
+    tmp78: i64 = min(tmp76, tmp77)
+    tmp79: i64 = 128
+    tmp80: bool = tmp78 != tmp79
+    tmp81: i64 = i64(tmp80)
+    tmp82: bf16 = bf16(tmp81)
+    tmp83: bf16 = tmp73 / tmp82
+    tmp84: bf16 = tmp41 + tmp83
+    buf6[] = tmp84
+    tmp85: bf16 = 0.5
+    tmp86: bf16 = tmp84 * tmp85
+    buf7[] = tmp86
+
+    after: op0_op1_op2, op3_op4_op5, op6_op7
+
+fusion_pass 2 (ordinary):
+    before: op0_op1_op2, op3_op4_op5, op6_op7
+    no successful fusion
+
+    after: op0_op1_op2, op3_op4_op5, op6_op7
+
+fusion_pass 3 (loop-reordering):
+    before: op0_op1_op2, op3_op4_op5, op6_op7
+    no successful fusion
+
+    after: op0_op1_op2, op3_op4_op5, op6_op7
