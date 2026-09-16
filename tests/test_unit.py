@@ -1,5 +1,7 @@
 # Owner(s): ["module: inductor"]
 
+import unittest
+
 import sympy
 import torch
 import torch._inductor.inductor_prims
@@ -132,6 +134,75 @@ return (buf0,)""",
         reduction_loop = outer_loop.body[1]
         self.assertIsInstance(reduction_loop.body[2], Update)
         self.assertIsInstance(outer_loop.body[2], Assign)
+
+    def test_scan(self):
+        def first_inner_fn(index):
+            return ops.constant(2.0, torch.float32)
+
+        def second_inner_fn(index):
+            return ops.constant(3.0, torch.float32)
+
+        def combine_fn(left, right):
+            return ops.add(left[0], right[0]), ops.mul(left[1], right[1])
+
+        inner_fns = (first_inner_fn, second_inner_fn)
+        data = ir.Scan(
+            device=torch.device("cpu"),
+            dtype=torch.float32,
+            inner_fn=inner_fns[1],
+            ranges=[2],
+            scan_ranges=[4],
+            size=[2, 4],
+            combine_fn=combine_fn,
+            reindex=lambda index, scan_index: [*index, *scan_index],
+            reduction_hint=ir.ReductionHint.DEFAULT,
+            output_index=1,
+            dtypes=(torch.float32, torch.float32),
+            inner_fns=inner_fns,
+        )
+        buffer = ir.ComputedBuffer(
+            name="buf0",
+            layout=ir.FixedLayout(torch.device("cpu"), torch.float32, [2, 4]),
+            data=data,
+        )
+        buffer.operation_name = "op0"
+
+        fx_graph = torch.fx.Graph()
+        fx_graph.output(())
+        graph = GraphLowering(torch.fx.GraphModule(torch.nn.Module(), fx_graph))
+        graph.operations = [buffer]
+        graph.graph_outputs = []
+        self.assertExpectedInline(
+            format_post_lowering(graph),
+            """\
+region op0() -> buf0: f32[2, 4]:
+    for i0 in [0, 2):
+        scan_0: f32
+        scan_1: f32
+        for r0 in [0, 4):
+            tmp0: f32 = 2.0
+            tmp1: f32 = 3.0
+            tmp2: f32 = scan_0 + tmp0
+            tmp3: f32 = scan_1 * tmp1
+            next_0: f32 = select(r0 == 0, tmp0, tmp2)
+            next_1: f32 = select(r0 == 0, tmp1, tmp3)
+            scan_0 = next_0
+            scan_1 = next_1
+            buf0[i0, r0] = scan_1
+
+return ()""",
+        )
+
+    @unittest.skipUnless(torch.cuda.is_available(), "requires CUDA")
+    def test_cummax_scan_tracks_all_tuple_inputs(self):
+        _, result = self.format_graph(
+            lambda x: torch.cummax(x, dim=1),
+            torch.randn(2, 4, device="cuda"),
+        )
+
+        self.assertIn("region op0(x_1: f32[2, 4])", result)
+        self.assertIn("region op1(x_1: f32[2, 4])", result)
+        self.assertNotIn("unimplemented ComputedBuffer(Scan)", result)
 
     def test_welford_reduce(self):
         def inner_fn(index, reduction_index):

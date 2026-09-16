@@ -33,8 +33,81 @@ def _inputs():
     )
 
 
+def _scan_fusion_example(x):
+    return torch.cumsum(torch.sin(x), dim=1).sum(dim=1)
+
+
+def _pointwise_scan_pointwise_example(x):
+    pointwise = torch.sin(x)
+    scan = torch.cumsum(pointwise, dim=1)
+    return pointwise, torch.sigmoid(scan)
+
+
 @unittest.skipUnless(torch.cuda.is_available(), "requires CUDA")
 class TestFusedSchedulerLoopIR(TestCase):
+    def test_pointwise_scan_pointwise(self):
+        graph = lower_callable(
+            _pointwise_scan_pointwise_example,
+            torch.randn(2, 8, device="cuda"),
+        )
+
+        with graph_context(graph):
+            scheduler = Scheduler(graph.operations)
+            result = format_fused_scheduler(scheduler)
+
+        self.assertEqual(len(scheduler.nodes), 1)
+        self.assertIsInstance(scheduler.nodes[0], FusedSchedulerNode)
+        self.assertExpectedInline(
+            result,
+            """\
+region op0_op1_op2(x_1: f32[2, 8]) -> (buf0: f32[2, 8], buf1: f32[2, 8], buf2: f32[2, 8]):
+    for p0 in [0, 2):
+        scan_0: f32
+        for r0 in [0, 8):
+            tmp0: f32 = x_1[p0, r0]
+            tmp1: f32 = sin(tmp0)
+            buf0[p0, r0] = tmp1
+            tmp2: f32 = scan_0 + tmp1
+            next_0: f32 = select(r0 == 0, tmp1, tmp2)
+            scan_0 = next_0
+            buf1[p0, r0] = scan_0
+            tmp3: f32 = sigmoid(scan_0)
+            buf2[p0, r0] = tmp3
+
+return (buf0, buf2)""",
+        )
+
+    def test_pointwise_scan_reduction(self):
+        graph = lower_callable(
+            _scan_fusion_example, torch.randn(2, 16, device="cuda")
+        )
+
+        with graph_context(graph):
+            scheduler = Scheduler(graph.operations)
+            result = format_fused_scheduler(scheduler)
+
+        self.assertEqual(len(scheduler.nodes), 1)
+        self.assertIsInstance(scheduler.nodes[0], FusedSchedulerNode)
+        self.assertExpectedInline(
+            result,
+            """\
+region op0_op1(x_1: f32[2, 16]) -> (buf0: f32[2, 16], buf1: f32[2]):
+    for p0 in [0, 2):
+        scan_0: f32
+        acc_0: f32 = 0
+        for r0 in [0, 16):
+            tmp0: f32 = x_1[p0, r0]
+            tmp1: f32 = sin(tmp0)
+            tmp2: f32 = scan_0 + tmp1
+            next_0: f32 = select(r0 == 0, tmp1, tmp2)
+            scan_0 = next_0
+            buf0[p0, r0] = scan_0
+            acc_0 += scan_0
+        buf1[p0] = acc_0
+
+return (buf1,)""",
+        )
+
     def test_pointwise_horizontal_reductions_and_epilogue(self):
         graph = lower_callable(_fusion_example, *_inputs())
 

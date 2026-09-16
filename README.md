@@ -31,7 +31,7 @@ temporaries carry compact dtype annotations such as `f32`, `f64`, and `bf16`.
 Call it after `GraphLowering.run(...)` and before constructing `Scheduler`.
 The formatter currently handles:
 
-- `ComputedBuffer` containing `Pointwise` or `Reduction`;
+- `ComputedBuffer` containing `Pointwise`, `Reduction`, or `Scan`;
 - logical multidimensional accesses for dense layouts;
 - indirect indexing with Python-style negative-index normalization;
 - no-kernel view outputs such as permute, transpose, reshape, squeeze,
@@ -42,6 +42,11 @@ Other top-level Inductor operations emit `unimplemented <type>` rather than
 attempting a potentially misleading rendering. `WelfordReduction` supports
 both scalar `welford_reduce` and tuple-valued `welford_combine`; other
 multi-output reduction types remain unimplemented.
+
+`Scan` and `SplitScan` use the same logical rendering: loop-carried scalar
+state is updated with the associative combine function and stored at every
+scan position. Tuple scans use one state variable per dtype and update all
+next-state values before assigning any state variable.
 
 The final `return (...)` records graph-output slots. A direct
 `StorageBox(ComputedBuffer(bufN))` returns `bufN`; a `ReinterpretView` keeps its
