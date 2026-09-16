@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import patch
 
@@ -496,6 +496,47 @@ def _make_loop_nest(
     return result
 
 
+def _build_scan_update(
+    handler: _LogicalOpsHandler,
+    dtypes: Sequence[torch.dtype],
+    combine_fn: Callable[[tuple[object, ...], tuple[object, ...]], tuple[object, ...]],
+    values: Sequence[object],
+    scan_variables: Sequence[sympy.Symbol],
+    state_indices: Sequence[int],
+) -> tuple[tuple[Variable, ...], tuple[Stmt, ...], tuple[Stmt, ...]]:
+    values = tuple(_unwrap(value) for value in values)
+    if len(dtypes) != len(values) or len(dtypes) != len(state_indices):
+        raise ValueError("scan state, value, and dtype counts must match")
+
+    states = tuple(
+        _local_scalar(f"scan_{index}", dtype)
+        for index, dtype in zip(state_indices, dtypes)
+    )
+    combined = _unwrap(combine_fn(states, values))
+    if not isinstance(combined, tuple) or len(combined) != len(states):
+        raise TypeError("scan combine function must return one value per state")
+
+    bindings = tuple(handler.bindings)
+    handler.bindings.clear()
+    first = PostLoweringFormatter._first_reduction_iteration(scan_variables)
+    next_states = tuple(
+        _local_scalar(f"next_{index}", dtype)
+        for index, dtype in zip(state_indices, dtypes)
+    )
+    updates = (
+        *bindings,
+        *(
+            Declare(next_state, Select(first, value, combined_value))
+            for next_state, value, combined_value in zip(
+                next_states, values, combined
+            )
+        ),
+        *(Assign(state, next_state) for state, next_state in zip(states, next_states)),
+    )
+    initializers = tuple(Declare(state) for state in states)
+    return states, initializers, updates
+
+
 def _reduction_identity(reduction_type: str, dtype: torch.dtype) -> object:
     if reduction_type in ("sum", "dot", "xor_sum"):
         return Constant(0)
@@ -601,6 +642,8 @@ class PostLoweringFormatter:
                 return self._format_reduction(operation)
             if type(operation.data) is ir.WelfordReduction:
                 return self._format_welford_reduction(operation)
+            if isinstance(operation.data, ir.Scan):
+                return self._format_scan(operation)
 
         return self._format_unimplemented(operation)
 
@@ -864,6 +907,49 @@ class PostLoweringFormatter:
             buffer.get_operation_name(),
             self._input_variables(
                 tuple(buffer.get_read_names()), handler.input_renames
+            ),
+            (output_variable,),
+            body,
+        )
+
+    def _format_scan(self, buffer: ir.ComputedBuffer) -> Fused:
+        data = buffer.data
+        if not isinstance(data, ir.Scan):
+            raise TypeError(f"expected Scan, got {type(data)}")
+
+        variables, var_ranges = _make_index_vars("i", data.ranges)
+        scan_variables, scan_var_ranges = _make_index_vars("r", data.scan_ranges)
+        var_ranges.update(scan_var_ranges)
+        handler = _LogicalOpsHandler(
+            self.graph,
+            var_ranges,
+            use_temporaries=self.use_temporaries,
+        )
+        index = data.reindex(variables, scan_variables)
+        with (
+            V.set_graph_handler(self.graph),
+            V.set_ops_handler(handler),
+            patch.object(ir.FlexibleLayout, "allow_indexing", True),
+        ):
+            values = tuple(inner_fn(index) for inner_fn in data.inner_fns)
+            states, initializers, updates = _build_scan_update(
+                handler,
+                data.dtypes,
+                data.combine_fn,
+                values,
+                scan_variables,
+                tuple(range(len(data.dtypes))),
+            )
+
+        output_variable = _global_tensor(self.graph, buffer.get_name(), buffer)
+        output = TensorAccess(output_variable, tuple(index))
+        scan_body = (*updates, Assign(output, states[data.output_index]))
+        body = (*initializers, *_make_loop_nest(scan_variables, data.scan_ranges, scan_body))
+        body = _make_loop_nest(variables, data.ranges, body)
+        return Fused(
+            buffer.get_operation_name(),
+            self._input_variables(
+                tuple(handler.reads), handler.input_renames
             ),
             (output_variable,),
             body,

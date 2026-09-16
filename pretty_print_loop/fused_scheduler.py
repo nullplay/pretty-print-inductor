@@ -28,6 +28,7 @@ from .loop_ir import (
     Stmt,
     Unimplemented,
     Update,
+    _build_scan_update,
     _global_tensor,
     _local_scalar,
     _LogicalOpsHandler,
@@ -148,6 +149,7 @@ class _FusedLogicalOpsHandler(_LogicalOpsHandler):
         self.forwarded: dict[tuple[str, str], object] = {}
         self.forwarded_reductions: dict[tuple[str, str], object] = {}
         self.accumulator_count = itertools.count()
+        self.scan_state_count = itertools.count()
 
     def start_phase(self, statements: list[Stmt]) -> None:
         self.current = statements
@@ -240,6 +242,20 @@ class _FusedLogicalOpsHandler(_LogicalOpsHandler):
             Update(accumulator, _reduction_operator(reduction_type), value)
         )
         return accumulator
+
+    def scan(self, dtypes, combine_fn, values):
+        state_indices = tuple(next(self.scan_state_count) for _ in dtypes)
+        states, initializers, updates = _build_scan_update(
+            self,
+            dtypes,
+            combine_fn,
+            values,
+            self.reduction_variables,
+            state_indices,
+        )
+        self.initializers.extend(initializers)
+        self.current.extend(updates)
+        return states
 
     def store_reduction(self, name, index, value):
         value = _unwrap(value)
